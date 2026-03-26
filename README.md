@@ -6,6 +6,8 @@ A macOS menu bar app for managing multiple ChatGPT/Codex accounts. Switch accoun
 
 ---
 
+![CodexAppBar English](en.png)
+
 ## Features
 
 - **Multi-account management** — Add unlimited ChatGPT accounts via OAuth
@@ -58,6 +60,8 @@ This project is **not affiliated with or endorsed by OpenAI**. It uses unofficia
 ---
 
 ## 中文说明
+
+![CodexAppBar 中文](zh.png)
 
 CodexAppBar 是一个 macOS 状态栏应用，用于管理多个 ChatGPT/Codex 账号，支持一键切换并实时监控额度。
 
