@@ -2,9 +2,15 @@ import SwiftUI
 import Combine
 import UserNotifications
 
+private final class ObserverBox {
+    var token: NSObjectProtocol?
+}
+
 struct MenuBarView: View {
     @EnvironmentObject var store: TokenStore
     @EnvironmentObject var oauth: OAuthManager
+    @EnvironmentObject var settings: AppSettings
+    @Environment(\.openWindow) private var openWindow
     @State private var isRefreshing = false
     @State private var showError: String?
     @State private var showSuccess: String?
@@ -19,7 +25,7 @@ struct MenuBarView: View {
     @State private var menuVisible = false
     @State private var languageToggle = false  // 用于触发语言切换后的重绘
 
-    /// email → accounts (sorted: active first, then by status)
+    /// email -> accounts (active pinned to top, exhausted pinned to bottom)
     private var groupedAccounts: [(email: String, accounts: [TokenAccount])] {
         var dict: [String: [TokenAccount]] = [:]
         var order: [String] = []
@@ -38,15 +44,17 @@ struct MenuBarView: View {
         }
         return sortedOrder.map { email in
             let sorted = dict[email]!.sorted { a, b in
-                if a.isActive != b.isActive { return a.isActive }
-                return statusRank(a) < statusRank(b)
+                if a.displaySortRank != b.displaySortRank { return a.displaySortRank < b.displaySortRank }
+                if a.primaryRemainingPercent != b.primaryRemainingPercent { return a.primaryRemainingPercent > b.primaryRemainingPercent }
+                if a.secondaryRemainingPercent != b.secondaryRemainingPercent { return a.secondaryRemainingPercent > b.secondaryRemainingPercent }
+                return a.accountId < b.accountId
             }
             return (email: email, accounts: sorted)
         }
     }
 
     private func bestStatus(_ accounts: [TokenAccount]) -> Int {
-        accounts.map { statusRank($0) }.min() ?? 2
+        accounts.map(\.displaySortRank).min() ?? 3
     }
 
     private func statusRank(_ a: TokenAccount) -> Int {
@@ -212,6 +220,26 @@ struct MenuBarView: View {
                 .help(L.addAccount)
 
                 Button {
+                    openWindow(id: "main")
+                } label: {
+                    Image(systemName: "macwindow")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.borderless)
+                .help(L.openWindow)
+
+                Button {
+                    settings.toggleDockIcon()
+                    showSuccess = L.settingsSaved
+                    showError = nil
+                } label: {
+                    Image(systemName: settings.showDockIcon ? "dock.rectangle" : "menubar.rectangle")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.borderless)
+                .help(settings.showDockIcon ? L.dockAndMenuBar : L.menuBarOnly)
+
+                Button {
                     switch L.languageOverride {
                     case nil:   L.languageOverride = true
                     case true:  L.languageOverride = false
@@ -294,7 +322,7 @@ struct MenuBarView: View {
         let candidates = store.accounts.filter {
             !$0.isSuspended && !$0.tokenExpired && $0.accountId != active.accountId
         }.sorted {
-            if statusRank($0) != statusRank($1) { return statusRank($0) < statusRank($1) }
+            if $0.displaySortRank != $1.displaySortRank { return $0.displaySortRank < $1.displaySortRank }
             let rem0 = min(100 - $0.primaryUsedPercent, 100 - $0.secondaryUsedPercent)
             let rem1 = min(100 - $1.primaryUsedPercent, 100 - $1.secondaryUsedPercent)
             return rem0 > rem1
@@ -346,15 +374,18 @@ struct MenuBarView: View {
                 running.forEach { $0.forceTerminate() }
                 return
             }
-            var observer: NSObjectProtocol?
-            observer = ws.notificationCenter.addObserver(
+            let observerBox = ObserverBox()
+            observerBox.token = ws.notificationCenter.addObserver(
                 forName: NSWorkspace.didTerminateApplicationNotification,
                 object: nil,
                 queue: .main
             ) { note in
                 guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                       app.bundleIdentifier == "com.openai.codex" else { return }
-                ws.notificationCenter.removeObserver(observer!)
+                if let token = observerBox.token {
+                    ws.notificationCenter.removeObserver(token)
+                    observerBox.token = nil
+                }
                 ws.open(url)
             }
         }

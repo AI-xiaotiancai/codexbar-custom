@@ -33,7 +33,24 @@ enum L {
     static var addAccountHint: String  { zh ? "点击下方 + 添加账号"   : "Tap + below to add an account" }
     static var refreshUsage: String    { zh ? "刷新用量"            : "Refresh Usage" }
     static var addAccount: String      { zh ? "添加账号"            : "Add Account" }
+    static var openWindow: String      { zh ? "打开主窗口"          : "Open Window" }
+    static var restoreMenuBarIcon: String { zh ? "恢复菜单栏图标" : "Restore Menu Bar Icon" }
     static var quit: String            { zh ? "退出"               : "Quit" }
+    static var displayMode: String     { zh ? "显示模式"            : "Display Mode" }
+    static var dockAndMenuBar: String  { zh ? "Dock + 菜单栏"       : "Dock + Menu Bar" }
+    static var menuBarOnly: String     { zh ? "仅菜单栏"            : "Menu Bar Only" }
+    static var dockIconSetting: String { zh ? "Dock 图标"           : "Dock Icon" }
+    static var dockIconVisible: String { zh ? "Dock 已显示"         : "Dock Visible" }
+    static var dockIconHidden: String  { zh ? "仅隐藏 Dock，菜单栏始终保留" : "Dock Hidden, menu bar stays visible" }
+    static var dockIconHint: String    { zh ? "菜单栏入口会始终保留，避免应用启动后找不到。" : "The menu bar entry always stays visible so the app remains easy to find." }
+    static var accountOverview: String { zh ? "账号概览"            : "Account Overview" }
+    static var activeAccountLabel: String { zh ? "当前活跃账号"      : "Active Account" }
+    static var noActiveAccount: String { zh ? "暂无活跃账号"         : "No active account" }
+    static var manageAccounts: String  { zh ? "账号管理"            : "Manage Accounts" }
+    static var windowHint: String      { zh ? "这个窗口提供账号概览、显示模式和常用操作。" : "This window provides account overview, display mode, and common actions." }
+    static var restoreMenuBarHint: String { zh ? "如果右上角入口临时消失，可点击这里重新挂回菜单栏。" : "If the menu bar entry temporarily disappears, click here to restore it." }
+    static var refreshAll: String      { zh ? "刷新全部"            : "Refresh All" }
+    static var settingsSaved: String   { zh ? "显示模式已更新"       : "Display mode updated" }
     static var switchAccount: String    { zh ? "切换账号"            : "Switch Account" }
     static var switchTitle: String     { zh ? "切换账号"            : "Switch Account" }
     static var continueRestart: String { zh ? "继续"               : "Continue" }
@@ -103,6 +120,7 @@ enum L {
     static var accountSuspended: String { zh ? "账号已停用" : "Account suspended" }
     static var weeklyExhausted: String  { zh ? "周额度耗尽" : "Weekly quota exhausted" }
     static var primaryExhausted: String { zh ? "5h 额度耗尽" : "5h quota exhausted" }
+    static var subscriptionExpiryLabel: String { zh ? "截止" : "Ends" }
 
     // MARK: - TokenAccount status
     static var statusOk: String       { zh ? "正常"     : "OK" }
@@ -112,6 +130,7 @@ enum L {
 
     // MARK: - Reset countdown
     static var resetSoon: String { zh ? "即将重置" : "Resetting soon" }
+    static var resetNotActivated: String { zh ? "额度尚未激活" : "Quota not activated yet" }
     static func resetInMin(_ m: Int) -> String {
         zh ? "\(m) 分钟后重置" : "Resets in \(m) min"
     }

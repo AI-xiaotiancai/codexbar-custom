@@ -68,12 +68,8 @@ class WhamService {
             let (result, name) = try await (usageResult, orgName)
             await MainActor.run {
                 var updated = account
-                updated.planType = result.planType
-                updated.primaryUsedPercent = result.primaryUsedPercent
-                updated.secondaryUsedPercent = result.secondaryUsedPercent
-                updated.primaryResetAt = result.primaryResetAt
-                updated.secondaryResetAt = result.secondaryResetAt
-                updated.lastChecked = Date()
+                let checkedAt = Date()
+                updated.applyUsage(result: result, checkedAt: checkedAt)
                 if let name { updated.organizationName = name }
                 store.addOrUpdate(updated)
             }
@@ -105,12 +101,8 @@ class WhamService {
                         let (result, name) = try await (usageResult, orgName)
                         await MainActor.run {
                             var updated = account
-                            updated.planType = result.planType
-                            updated.primaryUsedPercent = result.primaryUsedPercent
-                            updated.secondaryUsedPercent = result.secondaryUsedPercent
-                            updated.primaryResetAt = result.primaryResetAt
-                            updated.secondaryResetAt = result.secondaryResetAt
-                            updated.lastChecked = Date()
+                            let checkedAt = Date()
+                            updated.applyUsage(result: result, checkedAt: checkedAt)
                             if let name { updated.organizationName = name }
                             store.addOrUpdate(updated)
                         }

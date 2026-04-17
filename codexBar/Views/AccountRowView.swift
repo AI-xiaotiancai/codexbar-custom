@@ -19,10 +19,12 @@ struct AccountRowView: View {
                     .fill(statusColor)
                     .frame(width: 7, height: 7)
 
-                Text(displayName)
-                    .font(.system(size: 12, weight: isActive ? .semibold : .regular))
-                    .foregroundColor(isActive ? .accentColor : .primary)
-                    .lineLimit(1)
+                if let displayName {
+                    Text(displayName)
+                        .font(.system(size: 12, weight: isActive ? .semibold : .regular))
+                        .foregroundColor(isActive ? .accentColor : .primary)
+                        .lineLimit(1)
+                }
 
                 Text(account.planType.uppercased())
                     .font(.system(size: 9, weight: .medium))
@@ -31,6 +33,13 @@ struct AccountRowView: View {
                     .background(planBadgeColor.opacity(0.15))
                     .foregroundColor(planBadgeColor)
                     .cornerRadius(3)
+
+                if let subscriptionExpiryText = account.subscriptionExpiryText {
+                    Text("\(L.subscriptionExpiryLabel) \(subscriptionExpiryText)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(subscriptionExpiryColor)
+                        .lineLimit(1)
+                }
 
                 if isActive {
                     Image(systemName: "checkmark.circle.fill")
@@ -43,7 +52,7 @@ struct AccountRowView: View {
                 // 删除按钮（NSAlert 二次确认）
                 Button {
                     let alert = NSAlert()
-                    alert.messageText = L.confirmDelete(displayName)
+                    alert.messageText = L.confirmDelete(deleteTargetName)
                     alert.alertStyle = .warning
                     alert.addButton(withTitle: L.delete)
                     alert.addButton(withTitle: L.cancel)
@@ -105,74 +114,28 @@ struct AccountRowView: View {
                     Spacer()
                 }
             } else if account.quotaExhausted {
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.orange)
-                    let label = account.secondaryExhausted ? L.weeklyExhausted : L.primaryExhausted
-                    let resetDesc = account.secondaryExhausted ? account.secondaryResetDescription : account.primaryResetDescription
-                    Text(resetDesc.isEmpty ? label : "\(label) · \(resetDesc)")
-                        .font(.system(size: 10))
-                        .foregroundColor(.orange)
-                    Spacer()
+                if account.primaryExhausted && !account.secondaryExhausted {
+                    HStack(spacing: 8) {
+                        primaryQuotaCard(remainingPercent: 0, resetStatusText: account.primaryResetStatusText)
+                        weeklyQuotaCard
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                        let label = account.secondaryExhausted ? L.weeklyExhausted : L.primaryExhausted
+                        let resetDesc = account.secondaryExhausted ? account.secondaryResetDescription : account.primaryResetDescription
+                        Text(resetDesc.isEmpty ? label : "\(label) · \(resetDesc)")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                        Spacer()
+                    }
                 }
             } else {
                 HStack(spacing: 8) {
-                    // 5h window
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 2) {
-                            Text("5h")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(Int(account.primaryUsedPercent))%")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(usageColor(account.primaryUsedPercent))
-                                .contentTransition(.numericText())
-                                .animation(.easeInOut(duration: 0.3), value: account.primaryUsedPercent)
-                        }
-                        ProgressView(value: min(account.primaryUsedPercent / 100, 1.0))
-                            .tint(usageColor(account.primaryUsedPercent))
-                            .scaleEffect(x: 1, y: 0.7)
-                            .animation(.easeInOut(duration: 0.4), value: account.primaryUsedPercent)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // 7d window
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 2) {
-                            Text("7d")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(Int(account.secondaryUsedPercent))%")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(usageColor(account.secondaryUsedPercent))
-                                .contentTransition(.numericText())
-                                .animation(.easeInOut(duration: 0.3), value: account.secondaryUsedPercent)
-                        }
-                        ProgressView(value: min(account.secondaryUsedPercent / 100, 1.0))
-                            .tint(usageColor(account.secondaryUsedPercent))
-                            .scaleEffect(x: 1, y: 0.7)
-                            .animation(.easeInOut(duration: 0.4), value: account.secondaryUsedPercent)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-
-            // Reset countdown
-            if !account.isBanned {
-                HStack(spacing: 8) {
-                    if account.primaryUsedPercent >= 70, !account.primaryResetDescription.isEmpty {
-                        Text("5h: " + account.primaryResetDescription)
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
-                    }
-                    if account.secondaryUsedPercent >= 70, !account.secondaryResetDescription.isEmpty {
-                        Text("7d: " + account.secondaryResetDescription)
-                            .font(.system(size: 9))
-                            .foregroundColor(.secondary)
-                    }
+                    primaryQuotaCard(remainingPercent: account.primaryRemainingPercent, resetStatusText: account.primaryResetStatusText)
+                    weeklyQuotaCard
                 }
             }
         }
@@ -193,9 +156,72 @@ struct AccountRowView: View {
         }
     }
 
-    private var displayName: String {
-        if let org = account.organizationName, !org.isEmpty { return org }
-        return String(account.accountId.prefix(8))
+    private var displayName: String? {
+        guard let org = account.organizationName, !org.isEmpty else { return nil }
+        return org
+    }
+
+    private var deleteTargetName: String {
+        displayName ?? account.email
+    }
+
+    private var subscriptionExpiryColor: Color {
+        let daysRemaining = account.subscriptionExpiryDaysRemaining ?? .max
+        if daysRemaining <= 3 { return .red }
+        if daysRemaining <= 7 { return .orange }
+        return .secondary
+    }
+
+    private func primaryQuotaCard(remainingPercent: Double, resetStatusText: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 2) {
+                Text("5h 剩余")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(Int(remainingPercent))%")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(usageColor(remainingPercent))
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.3), value: remainingPercent)
+            }
+            ProgressView(value: min(remainingPercent / 100, 1.0))
+                .tint(usageColor(remainingPercent))
+                .scaleEffect(x: 1, y: 0.7)
+                .animation(.easeInOut(duration: 0.4), value: remainingPercent)
+
+            Text(resetStatusText)
+                .font(.system(size: 8))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var weeklyQuotaCard: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 2) {
+                Text("7d 剩余")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(Int(account.secondaryRemainingPercent))%")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(usageColor(account.secondaryRemainingPercent))
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.3), value: account.secondaryRemainingPercent)
+            }
+            ProgressView(value: min(account.secondaryRemainingPercent / 100, 1.0))
+                .tint(usageColor(account.secondaryRemainingPercent))
+                .scaleEffect(x: 1, y: 0.7)
+                .animation(.easeInOut(duration: 0.4), value: account.secondaryRemainingPercent)
+
+            Text(account.secondaryResetStatusText)
+                .font(.system(size: 8))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var statusColor: Color {
@@ -213,9 +239,9 @@ struct AccountRowView: View {
         }
     }
 
-    private func usageColor(_ percent: Double) -> Color {
-        if percent >= 90 { return .red }
-        if percent >= 70 { return .orange }
+    private func usageColor(_ remainingPercent: Double) -> Color {
+        if remainingPercent <= 10 { return .red }
+        if remainingPercent <= 30 { return .orange }
         return .green
     }
 }
