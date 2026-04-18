@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var refreshingAccounts: Set<String> = []
     @State private var notice: String?
     @State private var errorText: String?
-    @State private var contentTopPadding: CGFloat = 10
+    @State private var contentTopPadding: CGFloat = 0
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -340,8 +340,7 @@ struct ContentView: View {
         window.titleVisibility = .visible
 
         // Derive a stable top inset from actual titlebar height to avoid traffic-light overlap.
-        let titlebarHeight = max(0, window.frame.height - window.contentLayoutRect.height)
-        let desiredTopPadding = max(10, (titlebarHeight + 10) / 3.0)
+        let desiredTopPadding: CGFloat = 0
         if abs(contentTopPadding - desiredTopPadding) > 0.5 {
             contentTopPadding = desiredTopPadding
         }
