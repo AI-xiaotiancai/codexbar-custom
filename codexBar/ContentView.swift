@@ -52,7 +52,7 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 20) {
                 headerSection
                 settingsSection
                 accountsSection
@@ -71,7 +71,7 @@ struct ContentView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("CodexAppBar")
+            Text("CodexBar")
                 .font(.system(size: 28, weight: .bold))
 
             Text(L.windowHint)
@@ -81,7 +81,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 summaryCard(title: L.accountOverview, value: "\(store.accounts.count)", detail: store.accounts.isEmpty ? L.noAccounts : L.manageAccounts)
                 summaryCard(title: L.activeAccountLabel, value: activeAccountName, detail: activeDetailText)
-                summaryCard(title: L.dockIconSetting, value: settings.showDockIcon ? L.dockIconVisible : L.dockIconHidden, detail: "CodexAppBar")
+                summaryCard(title: L.dockIconSetting, value: settings.showDockIcon ? L.dockIconVisible : L.dockIconHidden, detail: "CodexBar")
             }
 
             HStack(spacing: 10) {

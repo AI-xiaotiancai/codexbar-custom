@@ -74,7 +74,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // 标题栏
             HStack {
-                Text("CodexAppBar")
+                Text("CodexBar")
                     .font(.system(size: 13, weight: .semibold))
 
                 if !store.accounts.isEmpty {

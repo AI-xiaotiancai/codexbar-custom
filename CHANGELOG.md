@@ -1,6 +1,6 @@
 # Changelog
 
-本文档记录 `CodexAppBar` 的主要用户可见变更。
+本文档记录 `CodexBar` 的主要用户可见变更。
 
 格式参考 Keep a Changelog，时间按 `YYYY-MM-DD` 记录。
 

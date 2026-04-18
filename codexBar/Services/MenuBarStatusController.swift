@@ -168,11 +168,11 @@ final class MenuBarStatusController: NSObject {
         guard let button = statusItem?.button else { return }
 
         let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
-        let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "CodexAppBar")
+        let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "CodexBar")
         image?.isTemplate = true
         button.image = image?.withSymbolConfiguration(config)
         button.title = statusText
-        button.toolTip = "CodexAppBar"
+        button.toolTip = "CodexBar"
     }
 
     private var statusText: String {
