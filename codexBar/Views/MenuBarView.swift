@@ -28,8 +28,10 @@ struct MenuBarView: View {
     @State private var languageToggle = false  // 用于触发语言切换后的重绘
     @State private var lastReportedHeight: CGFloat = 0
     @State private var measuredThreeAccountListHeight: CGFloat = 0
+    @State private var measuredAllAccountsListHeight: CGFloat = 0
 
     private let fallbackScrollableListHeight: CGFloat = 300
+    private let fallbackAllAccountsListHeight: CGFloat = 220
 
     /// email -> accounts (active pinned to top, exhausted pinned to bottom)
     private var groupedAccounts: [(email: String, accounts: [TokenAccount])] {
@@ -99,6 +101,10 @@ struct MenuBarView: View {
         measuredThreeAccountListHeight > 0 ? measuredThreeAccountListHeight : fallbackScrollableListHeight
     }
 
+    private var effectiveAllAccountsListHeight: CGFloat {
+        measuredAllAccountsListHeight > 0 ? measuredAllAccountsListHeight : fallbackAllAccountsListHeight
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 标题栏
@@ -153,7 +159,7 @@ struct MenuBarView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                 }
-                .frame(height: shouldScrollAccounts ? effectiveScrollableListHeight : nil)
+                .frame(height: shouldScrollAccounts ? effectiveScrollableListHeight : effectiveAllAccountsListHeight)
                 .scrollIndicators(shouldScrollAccounts ? .visible : .hidden)
                 .background(alignment: .topLeading) {
                     if shouldScrollAccounts {
@@ -167,6 +173,21 @@ struct MenuBarView: View {
                                 GeometryReader { proxy in
                                     Color.clear.preference(
                                         key: MenuBarThreeAccountsHeightKey.self,
+                                        value: proxy.size.height
+                                    )
+                                }
+                            )
+                    } else {
+                        accountGroupsView(groupedAccounts)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .hidden()
+                            .allowsHitTesting(false)
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear.preference(
+                                        key: MenuBarAllAccountsHeightKey.self,
                                         value: proxy.size.height
                                     )
                                 }
@@ -303,6 +324,12 @@ struct MenuBarView: View {
             let normalized = ceil(value)
             guard abs(measuredThreeAccountListHeight - normalized) > 0.5 else { return }
             measuredThreeAccountListHeight = normalized
+        }
+        .onPreferenceChange(MenuBarAllAccountsHeightKey.self) { value in
+            guard value > 0 else { return }
+            let normalized = ceil(value)
+            guard abs(measuredAllAccountsListHeight - normalized) > 0.5 else { return }
+            measuredAllAccountsListHeight = normalized
         }
         .onReceive(countdownTimer) { _ in now = Date() }
         .onReceive(quickTimer) { _ in
@@ -503,6 +530,13 @@ private struct MenuBarPreferredHeightKey: PreferenceKey {
 }
 
 private struct MenuBarThreeAccountsHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct MenuBarAllAccountsHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())

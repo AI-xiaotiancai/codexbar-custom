@@ -174,7 +174,7 @@ final class MenuBarStatusController: NSObject {
     private func updatePopoverHeight(_ preferredHeight: CGFloat) {
         let update = { [weak self] in
             guard let self else { return }
-            let clampedHeight = max(self.popoverMinHeight, min(preferredHeight, self.popoverMaxHeight))
+            let clampedHeight = min(self.popoverMaxHeight, max(self.popoverMinHeight, preferredHeight))
             guard abs(self.popover.contentSize.height - clampedHeight) > 0.5 else { return }
             self.popover.contentSize = NSSize(width: self.popoverWidth, height: clampedHeight)
         }
