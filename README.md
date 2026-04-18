@@ -1,5 +1,9 @@
 # CodexAppBar
 
+> This repository is based on [xmasdong/codexbar](https://github.com/xmasdong/codexbar) and continues as an independently maintained custom build with local fixes and UI improvements.
+>
+> 本仓库基于 [xmasdong/codexbar](https://github.com/xmasdong/codexbar) 继续演进，作为带本地修复和界面改进的独立维护版本发布。
+
 A macOS menu bar app for managing multiple ChatGPT/Codex accounts. Switch accounts instantly and monitor quota usage without opening a browser.
 
 > **中文说明见下方 / Chinese version below**
