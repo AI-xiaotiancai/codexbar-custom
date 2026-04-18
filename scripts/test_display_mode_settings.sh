@@ -2,8 +2,10 @@
 
 set -eu
 
-SETTINGS_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Services/AppSettings.swift"
-APP_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/codexBarApp.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+SETTINGS_FILE="$ROOT/codexBar/Services/AppSettings.swift"
+APP_FILE="$ROOT/codexBar/codexBarApp.swift"
 
 if [ ! -f "$SETTINGS_FILE" ]; then
   echo "FAIL: AppSettings.swift is missing"

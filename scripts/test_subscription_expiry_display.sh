@@ -1,9 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-ROW_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Views/AccountRowView.swift"
-MODEL_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Models/TokenAccount.swift"
-L10N_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Localization.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+ROW_FILE="$ROOT/codexBar/Views/AccountRowView.swift"
+MODEL_FILE="$ROOT/codexBar/Models/TokenAccount.swift"
+L10N_FILE="$ROOT/codexBar/Localization.swift"
 
 if [[ ! -f "$ROW_FILE" || ! -f "$MODEL_FILE" || ! -f "$L10N_FILE" ]]; then
   echo "FAIL: required source files are missing"

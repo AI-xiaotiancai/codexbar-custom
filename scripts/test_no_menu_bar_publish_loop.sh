@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/codexBarApp.swift"
-SETTINGS_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Services/AppSettings.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+APP_FILE="$ROOT/codexBar/codexBarApp.swift"
+SETTINGS_FILE="$ROOT/codexBar/Services/AppSettings.swift"
 
 if [[ ! -f "$APP_FILE" || ! -f "$SETTINGS_FILE" ]]; then
   echo "FAIL: required source files are missing"

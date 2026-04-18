@@ -2,10 +2,12 @@
 
 set -eu
 
-MODEL_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Models/TokenAccount.swift"
-ROW_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Views/AccountRowView.swift"
-CONTENT_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/ContentView.swift"
-APP_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/codexBarApp.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+MODEL_FILE="$ROOT/codexBar/Models/TokenAccount.swift"
+ROW_FILE="$ROOT/codexBar/Views/AccountRowView.swift"
+CONTENT_FILE="$ROOT/codexBar/ContentView.swift"
+APP_FILE="$ROOT/codexBar/codexBarApp.swift"
 
 if ! rg -n 'primaryRemainingPercent|secondaryRemainingPercent' "$MODEL_FILE" >/dev/null; then
   echo "FAIL: remaining quota fields are missing in TokenAccount"

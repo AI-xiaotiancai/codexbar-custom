@@ -2,8 +2,10 @@
 
 set -eu
 
-CONTENT_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/ContentView.swift"
-MENU_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Views/MenuBarView.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+CONTENT_FILE="$ROOT/codexBar/ContentView.swift"
+MENU_FILE="$ROOT/codexBar/Views/MenuBarView.swift"
 
 if ! rg -n 'settings\.showDockIcon|Toggle\(isOn:' "$CONTENT_FILE" >/dev/null; then
   echo "FAIL: ContentView is missing display mode settings UI"

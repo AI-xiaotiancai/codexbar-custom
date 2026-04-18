@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-ROW_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Views/AccountRowView.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+ROW_FILE="$ROOT/codexBar/Views/AccountRowView.swift"
 
 if [[ ! -f "$ROW_FILE" ]]; then
   echo "FAIL: AccountRowView.swift is missing"

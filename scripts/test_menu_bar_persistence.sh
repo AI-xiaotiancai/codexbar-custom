@@ -1,10 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/codexBarApp.swift"
-CONTROLLER_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Services/MenuBarStatusController.swift"
-CONTENT_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/ContentView.swift"
-L10N_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Localization.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+APP_FILE="$ROOT/codexBar/codexBarApp.swift"
+CONTROLLER_FILE="$ROOT/codexBar/Services/MenuBarStatusController.swift"
+CONTENT_FILE="$ROOT/codexBar/ContentView.swift"
+L10N_FILE="$ROOT/codexBar/Localization.swift"
 
 if [[ ! -f "$APP_FILE" || ! -f "$CONTROLLER_FILE" || ! -f "$CONTENT_FILE" || ! -f "$L10N_FILE" ]]; then
   echo "FAIL: required source files are missing"

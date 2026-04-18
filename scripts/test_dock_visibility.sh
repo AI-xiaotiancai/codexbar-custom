@@ -2,7 +2,9 @@
 
 set -eu
 
-PROJECT_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar.xcodeproj/project.pbxproj"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+PROJECT_FILE="$ROOT/codexBar.xcodeproj/project.pbxproj"
 
 if rg -n 'INFOPLIST_KEY_LSUIElement = YES;' "$PROJECT_FILE" >/dev/null; then
   echo "FAIL: Dock icon is disabled by INFOPLIST_KEY_LSUIElement = YES"

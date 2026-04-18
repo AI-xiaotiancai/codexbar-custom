@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var refreshingAccounts: Set<String> = []
     @State private var notice: String?
     @State private var errorText: String?
+    @State private var contentTopPadding: CGFloat = 56
 
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -52,77 +53,44 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 20) {
                 headerSection
                 settingsSection
                 accountsSection
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .padding(.top, contentTopPadding)
         }
         .frame(minWidth: 640, minHeight: 520)
         .onReceive(timer) { _ in now = Date() }
         .onAppear {
+            normalizeWindowChrome()
             MenuBarStatusController.shared.restoreIfNeededFromMainWindow()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            normalizeWindowChrome()
             MenuBarStatusController.shared.restoreIfNeededFromMainWindow()
         }
     }
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("CodexBar")
-                .font(.system(size: 28, weight: .bold))
-
             Text(L.windowHint)
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 12) {
+            LazyVGrid(columns: summaryColumns, alignment: .leading, spacing: 12) {
                 summaryCard(title: L.accountOverview, value: "\(store.accounts.count)", detail: store.accounts.isEmpty ? L.noAccounts : L.manageAccounts)
                 summaryCard(title: L.activeAccountLabel, value: activeAccountName, detail: activeDetailText)
-                summaryCard(title: L.dockIconSetting, value: settings.showDockIcon ? L.dockIconVisible : L.dockIconHidden, detail: "CodexBar")
+                summaryCard(title: L.dockIconSetting, value: settings.showDockIcon ? L.dockIconVisible : L.dockIconHiddenCompact, detail: "CodexBar")
             }
 
-            HStack(spacing: 10) {
-                Button(L.addAccount) {
-                    oauth.startOAuth { result in
-                        switch result {
-                        case .success(let tokens):
-                            let account = AccountBuilder.build(from: tokens)
-                            store.addOrUpdate(account)
-                            notice = nil
-                            Task { await refreshAccount(account) }
-                        case .failure(let error):
-                            errorText = error.localizedDescription
-                        }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button(L.refreshAll) {
-                    Task { await refreshAll() }
-                }
-                .buttonStyle(.bordered)
-                .disabled(isRefreshing)
-
-                Button(L.restoreMenuBarIcon) {
-                    MenuBarStatusController.shared.restoreStatusItem(forceRebuild: true)
-                    notice = L.restoreMenuBarIcon
-                    errorText = nil
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    switch L.languageOverride {
-                    case nil: L.languageOverride = true
-                    case true: L.languageOverride = false
-                    case false: L.languageOverride = nil
-                    }
-                } label: {
-                    Text("Language: \(languageLabel)")
-                }
-                .buttonStyle(.bordered)
+            LazyVGrid(columns: actionColumns, alignment: .leading, spacing: 8) {
+                addAccountButton
+                refreshAllButton
+                restoreMenuBarButton
+                languageToggleButton
             }
 
             if let notice {
@@ -144,22 +112,30 @@ struct ContentView: View {
             Text(L.dockIconSetting)
                 .font(.system(size: 18, weight: .semibold))
 
-            Toggle(isOn: Binding(
-                get: { settings.showDockIcon },
-                set: { newValue in
-                    settings.showDockIcon = newValue
-                    notice = L.settingsSaved
-                }
-            )) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(settings.showDockIcon ? L.dockIconVisible : L.dockIconHidden)
                         .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .truncationMode(.tail)
                     Text(L.dockIconHint)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Toggle("", isOn: Binding(
+                    get: { settings.showDockIcon },
+                    set: { newValue in
+                        settings.showDockIcon = newValue
+                        notice = L.settingsSaved
+                    }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
             }
-            .toggleStyle(.switch)
 
             Button(L.restoreMenuBarIcon) {
                 MenuBarStatusController.shared.restoreStatusItem(forceRebuild: true)
@@ -238,15 +214,80 @@ struct ContentView: View {
             Text(value)
                 .font(.system(size: 18, weight: .semibold))
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .truncationMode(.tail)
+                .allowsTightening(true)
             Text(detail)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .truncationMode(.tail)
+                .allowsTightening(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(14)
+    }
+
+    private var summaryColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)]
+    }
+
+    private var actionColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 170), spacing: 10, alignment: .leading)]
+    }
+
+    private var addAccountButton: some View {
+        Button(L.addAccount) {
+            oauth.startOAuth { result in
+                switch result {
+                case .success(let tokens):
+                    let account = AccountBuilder.build(from: tokens)
+                    store.addOrUpdate(account)
+                    notice = nil
+                    Task { await refreshAccount(account) }
+                case .failure(let error):
+                    errorText = error.localizedDescription
+                }
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var refreshAllButton: some View {
+        Button(L.refreshAll) {
+            Task { await refreshAll() }
+        }
+        .buttonStyle(.bordered)
+        .disabled(isRefreshing)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var restoreMenuBarButton: some View {
+        Button(L.restoreMenuBarIcon) {
+            MenuBarStatusController.shared.restoreStatusItem(forceRebuild: true)
+            notice = L.restoreMenuBarIcon
+            errorText = nil
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var languageToggleButton: some View {
+        Button {
+            switch L.languageOverride {
+            case nil: L.languageOverride = true
+            case true: L.languageOverride = false
+            case false: L.languageOverride = nil
+            }
+        } label: {
+            Text("Language: \(languageLabel)")
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func refreshAll() async {
@@ -289,6 +330,24 @@ struct ContentView: View {
             case .failure(let error):
                 errorText = error.localizedDescription
             }
+        }
+    }
+
+    private func normalizeWindowChrome() {
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+
+        // Keep content below traffic lights/title bar, even if macOS promotes the window to a full-size content style.
+        if window.styleMask.contains(.fullSizeContentView) {
+            window.styleMask.remove(.fullSizeContentView)
+        }
+        window.titlebarAppearsTransparent = false
+        window.titleVisibility = .visible
+
+        // Derive a stable top inset from actual titlebar height to avoid traffic-light overlap.
+        let titlebarHeight = max(0, window.frame.height - window.contentLayoutRect.height)
+        let desiredTopPadding = max(56, titlebarHeight + 20)
+        if abs(contentTopPadding - desiredTopPadding) > 0.5 {
+            contentTopPadding = desiredTopPadding
         }
     }
 }
