@@ -188,6 +188,18 @@ struct TokenAccount: Codable, Identifiable {
         lastChecked = checkedAt
     }
 
+    mutating func applyAccountDetails(_ details: AccountDetails) {
+        if let planType = details.planType {
+            self.planType = planType
+        }
+        if details.subscriptionExpiryResolved {
+            expiresAt = details.subscriptionExpiresAt
+        }
+        if let organizationName = details.organizationName {
+            self.organizationName = organizationName
+        }
+    }
+
     private func resetLabel(from date: Date?) -> String {
         guard let date = date else { return "" }
         let remaining = date.timeIntervalSinceNow

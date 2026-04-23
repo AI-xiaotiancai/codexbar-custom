@@ -36,10 +36,10 @@ class WhamService {
         return parseUsage(json)
     }
 
-    /// 查询账号所属组织名称
-    func fetchOrgName(account: TokenAccount) async -> String? {
+    /// 查询账号详情，包括组织名和订阅权益信息。
+    func fetchAccountDetails(account: TokenAccount) async -> AccountDetails {
         let urlStr = "https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27?timezone_offset_min=-480"
-        guard let url = URL(string: urlStr) else { return nil }
+        guard let url = URL(string: urlStr) else { return .empty }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = 20
@@ -54,23 +54,35 @@ class WhamService {
         guard let (data, _) = try? await URLSession.shared.data(for: request),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let accounts = json["accounts"] as? [String: Any],
-              let entry = accounts[account.accountId] as? [String: Any],
-              let acct = entry["account"] as? [String: Any],
-              let name = acct["name"] as? String else { return nil }
-        return name
+              let entry = (accounts[account.accountId] ?? accounts["default"]) as? [String: Any] else {
+            return .empty
+        }
+
+        let acct = entry["account"] as? [String: Any]
+        let entitlement = entry["entitlement"] as? [String: Any]
+        let expiryValue = entitlement?["expires_at"] as? String
+        let expiresAt = expiryValue.flatMap(parseISO8601Date)
+        let expiryResolved = entitlement != nil && (expiryValue == nil || expiresAt != nil)
+
+        return AccountDetails(
+            organizationName: acct?["name"] as? String,
+            planType: acct?["plan_type"] as? String,
+            subscriptionExpiresAt: expiresAt,
+            subscriptionExpiryResolved: expiryResolved
+        )
     }
 
     /// 刷新单个账号的用量和组织名
     func refreshOne(account: TokenAccount, store: TokenStore) async {
         do {
             async let usageResult = self.fetchUsage(account: account)
-            async let orgName = self.fetchOrgName(account: account)
-            let (result, name) = try await (usageResult, orgName)
+            async let accountDetails = self.fetchAccountDetails(account: account)
+            let (result, details) = try await (usageResult, accountDetails)
             await MainActor.run {
                 var updated = account
                 let checkedAt = Date()
                 updated.applyUsage(result: result, checkedAt: checkedAt)
-                if let name { updated.organizationName = name }
+                updated.applyAccountDetails(details)
                 store.addOrUpdate(updated)
             }
         } catch WhamError.forbidden {
@@ -97,13 +109,13 @@ class WhamService {
                 group.addTask {
                     do {
                         async let usageResult = self.fetchUsage(account: account)
-                        async let orgName = self.fetchOrgName(account: account)
-                        let (result, name) = try await (usageResult, orgName)
+                        async let accountDetails = self.fetchAccountDetails(account: account)
+                        let (result, details) = try await (usageResult, accountDetails)
                         await MainActor.run {
                             var updated = account
                             let checkedAt = Date()
                             updated.applyUsage(result: result, checkedAt: checkedAt)
-                            if let name { updated.organizationName = name }
+                            updated.applyAccountDetails(details)
                             store.addOrUpdate(updated)
                         }
                     } catch WhamError.forbidden {
@@ -165,6 +177,13 @@ class WhamService {
             secondaryResetAt: secondaryResetAt
         )
     }
+
+    private func parseISO8601Date(_ value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractionalFormatter.date(from: value)
+            ?? ISO8601DateFormatter().date(from: value)
+    }
 }
 
 struct WhamUsageResult {
@@ -173,6 +192,20 @@ struct WhamUsageResult {
     let secondaryUsedPercent: Double
     let primaryResetAt: Date?
     let secondaryResetAt: Date?
+}
+
+struct AccountDetails {
+    let organizationName: String?
+    let planType: String?
+    let subscriptionExpiresAt: Date?
+    let subscriptionExpiryResolved: Bool
+
+    static let empty = AccountDetails(
+        organizationName: nil,
+        planType: nil,
+        subscriptionExpiresAt: nil,
+        subscriptionExpiryResolved: false
+    )
 }
 
 enum WhamError: LocalizedError {

@@ -17,10 +17,7 @@ struct AccountBuilder {
         let idAuthClaims = idClaims["https://api.openai.com/auth"] as? [String: Any] ?? [:]
         var expiresAt: Date? = nil
         if let untilStr = idAuthClaims["chatgpt_subscription_active_until"] as? String {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            expiresAt = formatter.date(from: untilStr)
-                ?? ISO8601DateFormatter().date(from: untilStr)
+            expiresAt = parseISO8601Date(untilStr)
         }
 
         // access_token 自身过期
@@ -50,5 +47,12 @@ struct AccountBuilder {
         guard let data = Data(base64Encoded: base64),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
         return json
+    }
+
+    static func parseISO8601Date(_ value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractionalFormatter.date(from: value)
+            ?? ISO8601DateFormatter().date(from: value)
     }
 }
