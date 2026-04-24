@@ -5,6 +5,11 @@ final class CodexBarAppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async {
             MenuBarStatusController.shared.install()
             MenuBarStatusController.shared.scheduleRecoveryChecks()
+            if !TokenStore.shared.accounts.isEmpty {
+                Task {
+                    await WhamService.shared.refreshAll(store: TokenStore.shared)
+                }
+            }
         }
     }
 
