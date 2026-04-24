@@ -33,8 +33,13 @@ if ! rg -n 'NSPopover' "$CONTROLLER_FILE" >/dev/null; then
   exit 1
 fi
 
-if ! rg -n 'MenuBarView\(\)' "$CONTROLLER_FILE" >/dev/null; then
-  echo "FAIL: menu bar controller does not embed the SwiftUI menu view"
+if ! rg -n 'MenuBarView\s*\{' "$CONTROLLER_FILE" >/dev/null; then
+  echo "FAIL: menu bar controller does not embed the SwiftUI menu view with a height callback"
+  exit 1
+fi
+
+if ! rg -n 'onPreferredHeightChanged|updatePopoverHeight' "$CONTROLLER_FILE" >/dev/null; then
+  echo "FAIL: menu bar controller does not wire popover height updates"
   exit 1
 fi
 
