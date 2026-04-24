@@ -17,6 +17,11 @@ final class MenuBarStatusController: NSObject {
     private var installed = false
     private var lastActiveAccountId: String?
 
+    private let popoverWidth: CGFloat = 300
+    private let popoverMinHeight: CGFloat = 180
+    private let popoverMaxHeight: CGFloat = 560
+    private let popoverDefaultHeight: CGFloat = 420
+
     private override init() {
         super.init()
     }
@@ -28,7 +33,7 @@ final class MenuBarStatusController: NSObject {
 
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 300, height: 520)
+        popover.contentSize = NSSize(width: popoverWidth, height: popoverDefaultHeight)
         popover.contentViewController = NSHostingController(rootView: makePopoverRootView())
         schedulePeriodicHealthChecks()
 
@@ -157,11 +162,28 @@ final class MenuBarStatusController: NSObject {
 
     private func makePopoverRootView() -> AnyView {
         AnyView(
-            MenuBarView()
+            MenuBarView { [weak self] preferredHeight in
+                self?.updatePopoverHeight(preferredHeight)
+            }
                 .environmentObject(store)
                 .environmentObject(oauth)
                 .environmentObject(settings)
         )
+    }
+
+    private func updatePopoverHeight(_ preferredHeight: CGFloat) {
+        let update = { [weak self] in
+            guard let self else { return }
+            let clampedHeight = min(self.popoverMaxHeight, max(self.popoverMinHeight, preferredHeight))
+            guard abs(self.popover.contentSize.height - clampedHeight) > 0.5 else { return }
+            self.popover.contentSize = NSSize(width: self.popoverWidth, height: clampedHeight)
+        }
+
+        if Thread.isMainThread {
+            update()
+        } else {
+            DispatchQueue.main.async(execute: update)
+        }
     }
 
     private func refreshAppearance() {

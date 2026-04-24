@@ -41,6 +41,7 @@ enum L {
     static var menuBarOnly: String     { zh ? "仅菜单栏"            : "Menu Bar Only" }
     static var dockIconSetting: String { zh ? "Dock 图标"           : "Dock Icon" }
     static var dockIconVisible: String { zh ? "Dock 已显示"         : "Dock Visible" }
+    static var dockIconHiddenCompact: String { zh ? "Dock 已隐藏" : "Dock Hidden" }
     static var dockIconHidden: String  { zh ? "仅隐藏 Dock，菜单栏始终保留" : "Dock Hidden, menu bar stays visible" }
     static var dockIconHint: String    { zh ? "菜单栏入口会始终保留，避免应用启动后找不到。" : "The menu bar entry always stays visible so the app remains easy to find." }
     static var accountOverview: String { zh ? "账号概览"            : "Account Overview" }

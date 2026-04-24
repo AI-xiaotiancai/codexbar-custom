@@ -2,7 +2,9 @@
 
 set -eu
 
-ROW_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Views/AccountRowView.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+ROW_FILE="$ROOT/codexBar/Views/AccountRowView.swift"
 
 if ! rg -n 'account\.secondaryResetDescription' "$ROW_FILE" >/dev/null; then
   echo "FAIL: weekly reset description is not referenced in AccountRowView"

@@ -7,6 +7,8 @@ private final class ObserverBox {
 }
 
 struct MenuBarView: View {
+    var onPreferredHeightChanged: ((CGFloat) -> Void)? = nil
+
     @EnvironmentObject var store: TokenStore
     @EnvironmentObject var oauth: OAuthManager
     @EnvironmentObject var settings: AppSettings
@@ -24,6 +26,12 @@ struct MenuBarView: View {
     private let slowTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     @State private var menuVisible = false
     @State private var languageToggle = false  // 用于触发语言切换后的重绘
+    @State private var lastReportedHeight: CGFloat = 0
+    @State private var measuredThreeAccountListHeight: CGFloat = 0
+    @State private var measuredAllAccountsListHeight: CGFloat = 0
+
+    private let fallbackScrollableListHeight: CGFloat = 300
+    private let fallbackAllAccountsListHeight: CGFloat = 220
 
     /// email -> accounts (active pinned to top, exhausted pinned to bottom)
     private var groupedAccounts: [(email: String, accounts: [TokenAccount])] {
@@ -68,6 +76,33 @@ struct MenuBarView: View {
 
     private var availableCount: Int {
         store.accounts.filter { $0.usageStatus == .ok }.count
+    }
+
+    private var shouldScrollAccounts: Bool {
+        store.accounts.count >= 4
+    }
+
+    private var firstThreeGroupedAccounts: [(email: String, accounts: [TokenAccount])] {
+        var remaining = 3
+        var result: [(email: String, accounts: [TokenAccount])] = []
+
+        for group in groupedAccounts {
+            guard remaining > 0 else { break }
+            let prefix = Array(group.accounts.prefix(remaining))
+            guard !prefix.isEmpty else { continue }
+            result.append((email: group.email, accounts: prefix))
+            remaining -= prefix.count
+        }
+
+        return result
+    }
+
+    private var effectiveScrollableListHeight: CGFloat {
+        measuredThreeAccountListHeight > 0 ? measuredThreeAccountListHeight : fallbackScrollableListHeight
+    }
+
+    private var effectiveAllAccountsListHeight: CGFloat {
+        measuredAllAccountsListHeight > 0 ? measuredAllAccountsListHeight : fallbackAllAccountsListHeight
     }
 
     var body: some View {
@@ -119,41 +154,46 @@ struct MenuBarView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(groupedAccounts, id: \.email) { group in
-                            VStack(alignment: .leading, spacing: 2) {
-                                // Email group header
-                                Text(group.email)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .padding(.leading, 4)
-
-                                // Account rows
-                                ForEach(group.accounts) { account in
-                                    AccountRowView(
-                                        account: account,
-                                        isActive: account.isActive,
-                                        now: now,
-                                        isRefreshing: refreshingAccounts.contains(account.id)
-                                    ) {
-                                        activateAccount(account)
-                                    } onRefresh: {
-                                        Task { await refreshAccount(account) }
-                                    } onReauth: {
-                                        reauthAccount(account)
-                                    } onDelete: {
-                                        store.remove(account)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                ScrollView(.vertical, showsIndicators: shouldScrollAccounts) {
+                    accountGroupsView(groupedAccounts)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                 }
-                .frame(maxHeight: 380)
+                .frame(height: shouldScrollAccounts ? effectiveScrollableListHeight : effectiveAllAccountsListHeight)
+                .scrollIndicators(shouldScrollAccounts ? .visible : .hidden)
+                .background(alignment: .topLeading) {
+                    if shouldScrollAccounts {
+                        accountGroupsView(firstThreeGroupedAccounts)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .hidden()
+                            .allowsHitTesting(false)
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear.preference(
+                                        key: MenuBarThreeAccountsHeightKey.self,
+                                        value: proxy.size.height
+                                    )
+                                }
+                            )
+                    } else {
+                        accountGroupsView(groupedAccounts)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .hidden()
+                            .allowsHitTesting(false)
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear.preference(
+                                        key: MenuBarAllAccountsHeightKey.self,
+                                        value: proxy.size.height
+                                    )
+                                }
+                            )
+                    }
+                }
             }
 
             if let success = showSuccess {
@@ -268,6 +308,29 @@ struct MenuBarView: View {
             .padding(.vertical, 8)
         }
         .frame(width: 300)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: MenuBarPreferredHeightKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(MenuBarPreferredHeightKey.self) { value in
+            let normalized = ceil(value)
+            guard abs(lastReportedHeight - normalized) > 0.5 else { return }
+            lastReportedHeight = normalized
+            onPreferredHeightChanged?(normalized)
+        }
+        .onPreferenceChange(MenuBarThreeAccountsHeightKey.self) { value in
+            guard value > 0 else { return }
+            let normalized = ceil(value)
+            guard abs(measuredThreeAccountListHeight - normalized) > 0.5 else { return }
+            measuredThreeAccountListHeight = normalized
+        }
+        .onPreferenceChange(MenuBarAllAccountsHeightKey.self) { value in
+            guard value > 0 else { return }
+            let normalized = ceil(value)
+            guard abs(measuredAllAccountsListHeight - normalized) > 0.5 else { return }
+            measuredAllAccountsListHeight = normalized
+        }
         .onReceive(countdownTimer) { _ in now = Date() }
         .onReceive(quickTimer) { _ in
             guard menuVisible,
@@ -291,6 +354,40 @@ struct MenuBarView: View {
             store.markActiveAccount()
         }
         .onDisappear { menuVisible = false }
+    }
+
+    @ViewBuilder
+    private func accountGroupsView(_ groups: [(email: String, accounts: [TokenAccount])]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(groups, id: \.email) { group in
+                VStack(alignment: .leading, spacing: 2) {
+                    // Email group header
+                    Text(group.email)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .padding(.leading, 4)
+
+                    // Account rows
+                    ForEach(group.accounts) { account in
+                        AccountRowView(
+                            account: account,
+                            isActive: account.isActive,
+                            now: now,
+                            isRefreshing: refreshingAccounts.contains(account.id)
+                        ) {
+                            activateAccount(account)
+                        } onRefresh: {
+                            Task { await refreshAccount(account) }
+                        } onReauth: {
+                            reauthAccount(account)
+                        } onDelete: {
+                            store.remove(account)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func relativeTime(_ date: Date) -> String {
@@ -422,5 +519,26 @@ struct MenuBarView: View {
                 showError = error.localizedDescription
             }
         }
+    }
+}
+
+private struct MenuBarPreferredHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct MenuBarThreeAccountsHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct MenuBarAllAccountsHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

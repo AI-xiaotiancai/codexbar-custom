@@ -2,8 +2,10 @@
 
 set -eu
 
-APP_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/codexBarApp.swift"
-CONTROLLER_FILE="/Users/chenqianying/Desktop/develop/codexbar/codexBar/Services/MenuBarStatusController.swift"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+APP_FILE="$ROOT/codexBar/codexBarApp.swift"
+CONTROLLER_FILE="$ROOT/codexBar/Services/MenuBarStatusController.swift"
 
 if [[ ! -f "$CONTROLLER_FILE" ]]; then
   echo "FAIL: MenuBarStatusController.swift is missing"
