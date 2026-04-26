@@ -53,8 +53,8 @@ struct MenuBarView: View {
         return sortedOrder.map { email in
             let sorted = dict[email]!.sorted { a, b in
                 if a.displaySortRank != b.displaySortRank { return a.displaySortRank < b.displaySortRank }
-                if a.primaryRemainingPercent != b.primaryRemainingPercent { return a.primaryRemainingPercent > b.primaryRemainingPercent }
-                if a.secondaryRemainingPercent != b.secondaryRemainingPercent { return a.secondaryRemainingPercent > b.secondaryRemainingPercent }
+                if a.bestAvailableQuotaPercent != b.bestAvailableQuotaPercent { return a.bestAvailableQuotaPercent > b.bestAvailableQuotaPercent }
+                if a.effectiveWeeklyRemainingPercent != b.effectiveWeeklyRemainingPercent { return a.effectiveWeeklyRemainingPercent > b.effectiveWeeklyRemainingPercent }
                 return a.accountId < b.accountId
             }
             return (email: email, accounts: sorted)
@@ -409,8 +409,8 @@ struct MenuBarView: View {
     private func autoSwitchIfNeeded() {
         guard let active = store.accounts.first(where: { $0.isActive }) else { return }
 
-        let primary5hRemaining  = 100.0 - active.primaryUsedPercent
-        let secondary7dRemaining = 100.0 - active.secondaryUsedPercent
+        let primary5hRemaining = active.showsPrimaryQuota ? active.primaryRemainingPercent : 100.0
+        let secondary7dRemaining = active.effectiveWeeklyRemainingPercent
 
         let shouldSwitch = primary5hRemaining <= 10.0 || secondary7dRemaining <= 3.0
         guard shouldSwitch else { return }
@@ -420,8 +420,8 @@ struct MenuBarView: View {
             !$0.isSuspended && !$0.tokenExpired && $0.accountId != active.accountId
         }.sorted {
             if $0.displaySortRank != $1.displaySortRank { return $0.displaySortRank < $1.displaySortRank }
-            let rem0 = min(100 - $0.primaryUsedPercent, 100 - $0.secondaryUsedPercent)
-            let rem1 = min(100 - $1.primaryUsedPercent, 100 - $1.secondaryUsedPercent)
+            let rem0 = $0.bestAvailableQuotaPercent
+            let rem1 = $1.bestAvailableQuotaPercent
             return rem0 > rem1
         }
 

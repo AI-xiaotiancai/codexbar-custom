@@ -48,8 +48,13 @@ class TokenStore: ObservableObject {
         }
         do {
             let pool = try decoder.decode(TokenPool.self, from: data)
-            accounts = pool.accounts
+            accounts = pool.accounts.map { account in
+                var sanitized = account
+                sanitized.sanitizePersistedState()
+                return sanitized
+            }
             markActiveAccount()
+            save()
         } catch {
             accounts = []
         }
@@ -62,13 +67,16 @@ class TokenStore: ObservableObject {
     }
 
     func addOrUpdate(_ account: TokenAccount) {
+        var sanitizedAccount = account
+        sanitizedAccount.sanitizePersistedState()
+
         if let idx = accounts.firstIndex(where: { $0.accountId == account.accountId }) {
-            var merged = account
+            var merged = sanitizedAccount
             // 保留 store 里的 isActive，防止异步刷新快照覆盖 activate() 的结果
             merged.isActive = accounts[idx].isActive
             accounts[idx] = merged
         } else {
-            accounts.append(account)
+            accounts.append(sanitizedAccount)
         }
         save()
     }

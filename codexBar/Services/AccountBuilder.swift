@@ -20,17 +20,14 @@ struct AccountBuilder {
             expiresAt = parseISO8601Date(untilStr)
         }
 
-        // access_token 自身过期
-        let tokenExp = claims["exp"] as? Double
-        let tokenExpiresAt = tokenExp.map { Date(timeIntervalSince1970: $0) }
-
         return TokenAccount(
             email: email,
             accountId: accountId,
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             idToken: tokens.idToken,
-            expiresAt: expiresAt ?? tokenExpiresAt,
+            // 这里只表示订阅截止，不应回退到 token 过期时间。
+            expiresAt: expiresAt,
             planType: planType
         )
     }

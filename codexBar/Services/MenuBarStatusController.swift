@@ -200,8 +200,11 @@ final class MenuBarStatusController: NSObject {
     private var statusText: String {
         guard let active = store.accounts.first(where: { $0.isActive }) else { return "" }
         if active.secondaryExhausted { return L.weeklyLimit }
-        if active.primaryExhausted { return L.hourLimit }
-        return "\(Int(active.primaryRemainingPercent))%·\(Int(active.secondaryRemainingPercent))%"
+        if active.showsPrimaryQuota && active.primaryExhausted { return L.hourLimit }
+        if active.showsPrimaryQuota {
+            return "\(Int(active.primaryRemainingPercent))%·\(Int(active.effectiveWeeklyRemainingPercent))%"
+        }
+        return "\(Int(active.effectiveWeeklyRemainingPercent))%"
     }
 
     private var iconName: String {
@@ -217,7 +220,7 @@ final class MenuBarStatusController: NSObject {
         if ref.contains(where: { $0.secondaryExhausted }) {
             return "exclamationmark.triangle.fill"
         }
-        if ref.contains(where: { $0.quotaExhausted || $0.primaryUsedPercent >= 80 || $0.secondaryUsedPercent >= 80 }) {
+        if ref.contains(where: { $0.quotaExhausted || $0.hasUsageWarning }) {
             return "bolt.circle.fill"
         }
         return "terminal.fill"

@@ -37,8 +37,8 @@ struct ContentView: View {
         return sortedOrder.map { email in
             let sorted = groups[email, default: []].sorted { lhs, rhs in
                 if lhs.displaySortRank != rhs.displaySortRank { return lhs.displaySortRank < rhs.displaySortRank }
-                if lhs.primaryRemainingPercent != rhs.primaryRemainingPercent { return lhs.primaryRemainingPercent > rhs.primaryRemainingPercent }
-                if lhs.secondaryRemainingPercent != rhs.secondaryRemainingPercent { return lhs.secondaryRemainingPercent > rhs.secondaryRemainingPercent }
+                if lhs.bestAvailableQuotaPercent != rhs.bestAvailableQuotaPercent { return lhs.bestAvailableQuotaPercent > rhs.bestAvailableQuotaPercent }
+                if lhs.effectiveWeeklyRemainingPercent != rhs.effectiveWeeklyRemainingPercent { return lhs.effectiveWeeklyRemainingPercent > rhs.effectiveWeeklyRemainingPercent }
                 return lhs.accountId < rhs.accountId
             }
             return (email, sorted)
@@ -191,7 +191,7 @@ struct ContentView: View {
 
     private var activeDetailText: String {
         guard let active = store.activeAccount() else { return L.noActiveAccount }
-        return "\(Int(active.primaryRemainingPercent))% · \(Int(active.secondaryRemainingPercent))%"
+        return active.summaryQuotaText
     }
 
     private var languageLabel: String {

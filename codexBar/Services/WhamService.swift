@@ -60,15 +60,19 @@ class WhamService {
 
         let acct = entry["account"] as? [String: Any]
         let entitlement = entry["entitlement"] as? [String: Any]
+        let hasEntitlement = (entitlement != nil)
         let expiryValue = entitlement?["expires_at"] as? String
         let expiresAt = expiryValue.flatMap(parseISO8601Date)
-        let expiryResolved = entitlement != nil && (expiryValue == nil || expiresAt != nil)
+        // `entitlement` 不存在时，表示当前账号无订阅权益，应清空旧的 expiresAt。
+        let expiryResolved = !hasEntitlement || expiryValue == nil || expiresAt != nil
 
         return AccountDetails(
             organizationName: acct?["name"] as? String,
             planType: acct?["plan_type"] as? String,
             subscriptionExpiresAt: expiresAt,
-            subscriptionExpiryResolved: expiryResolved
+            subscriptionExpiryResolved: expiryResolved,
+            entitlementResolved: true,
+            hasEntitlement: hasEntitlement
         )
     }
 
@@ -199,12 +203,16 @@ struct AccountDetails {
     let planType: String?
     let subscriptionExpiresAt: Date?
     let subscriptionExpiryResolved: Bool
+    let entitlementResolved: Bool
+    let hasEntitlement: Bool
 
     static let empty = AccountDetails(
         organizationName: nil,
         planType: nil,
         subscriptionExpiresAt: nil,
-        subscriptionExpiryResolved: false
+        subscriptionExpiryResolved: false,
+        entitlementResolved: false,
+        hasEntitlement: true
     )
 }
 

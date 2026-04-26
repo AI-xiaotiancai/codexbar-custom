@@ -113,30 +113,34 @@ struct AccountRowView: View {
                         .foregroundColor(.red)
                     Spacer()
                 }
-            } else if account.quotaExhausted {
-                if account.primaryExhausted && !account.secondaryExhausted {
-                    HStack(spacing: 8) {
-                        primaryQuotaCard(remainingPercent: 0, resetStatusText: account.primaryResetStatusText)
-                        weeklyQuotaCard
+            } else if account.showsPrimaryQuota {
+                if account.quotaExhausted {
+                    if account.primaryExhausted && !account.secondaryExhausted {
+                        HStack(spacing: 8) {
+                            primaryQuotaCard(remainingPercent: 0, resetStatusText: account.primaryResetStatusText)
+                            weeklyQuotaCard
+                        }
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                            let label = account.secondaryExhausted ? L.weeklyExhausted : L.primaryExhausted
+                            let resetDesc = account.secondaryExhausted ? account.secondaryResetDescription : account.primaryResetDescription
+                            Text(resetDesc.isEmpty ? label : "\(label) · \(resetDesc)")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                            Spacer()
+                        }
                     }
                 } else {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.orange)
-                        let label = account.secondaryExhausted ? L.weeklyExhausted : L.primaryExhausted
-                        let resetDesc = account.secondaryExhausted ? account.secondaryResetDescription : account.primaryResetDescription
-                        Text(resetDesc.isEmpty ? label : "\(label) · \(resetDesc)")
-                            .font(.system(size: 10))
-                            .foregroundColor(.orange)
-                        Spacer()
+                    HStack(spacing: 8) {
+                        primaryQuotaCard(remainingPercent: account.primaryRemainingPercent, resetStatusText: account.primaryResetStatusText)
+                        weeklyQuotaCard
                     }
                 }
             } else {
-                HStack(spacing: 8) {
-                    primaryQuotaCard(remainingPercent: account.primaryRemainingPercent, resetStatusText: account.primaryResetStatusText)
-                    weeklyQuotaCard
-                }
+                weeklyQuotaCard
             }
         }
         .padding(.vertical, 5)
@@ -205,18 +209,18 @@ struct AccountRowView: View {
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(Int(account.secondaryRemainingPercent))%")
+                Text("\(Int(account.effectiveWeeklyRemainingPercent))%")
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(usageColor(account.secondaryRemainingPercent))
+                    .foregroundColor(usageColor(account.effectiveWeeklyRemainingPercent))
                     .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.3), value: account.secondaryRemainingPercent)
+                    .animation(.easeInOut(duration: 0.3), value: account.effectiveWeeklyRemainingPercent)
             }
-            ProgressView(value: min(account.secondaryRemainingPercent / 100, 1.0))
-                .tint(usageColor(account.secondaryRemainingPercent))
+            ProgressView(value: min(account.effectiveWeeklyRemainingPercent / 100, 1.0))
+                .tint(usageColor(account.effectiveWeeklyRemainingPercent))
                 .scaleEffect(x: 1, y: 0.7)
-                .animation(.easeInOut(duration: 0.4), value: account.secondaryRemainingPercent)
+                .animation(.easeInOut(duration: 0.4), value: account.effectiveWeeklyRemainingPercent)
 
-            Text(account.secondaryResetStatusText)
+            Text(account.effectiveWeeklyResetStatusText)
                 .font(.system(size: 8))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
@@ -227,7 +231,7 @@ struct AccountRowView: View {
     private var statusColor: Color {
         if account.isBanned { return .red }
         if account.quotaExhausted { return .orange }
-        if account.primaryUsedPercent >= 80 || account.secondaryUsedPercent >= 80 { return .yellow }
+        if account.hasUsageWarning { return .yellow }
         return .green
     }
 

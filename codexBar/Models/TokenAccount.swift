@@ -95,28 +95,49 @@ struct TokenAccount: Codable, Identifiable {
     // MARK: - Computed
 
     var isBanned: Bool { isSuspended }
-    var primaryExhausted: Bool { primaryUsedPercent >= 100 }
-    var secondaryExhausted: Bool { secondaryUsedPercent >= 100 }
+    var showsPrimaryQuota: Bool { !isFreePlan }
+    var primaryExhausted: Bool { showsPrimaryQuota && primaryUsedPercent >= 100 }
+    var effectiveWeeklyUsedPercent: Double { isFreePlan ? primaryUsedPercent : secondaryUsedPercent }
+    var effectiveWeeklyResetAt: Date? { isFreePlan ? primaryResetAt : secondaryResetAt }
+    private var effectiveWeeklyResetStagnantRefreshCount: Int {
+        isFreePlan ? primaryResetStagnantRefreshCount : secondaryResetStagnantRefreshCount
+    }
+    var effectiveWeeklyExhausted: Bool { effectiveWeeklyUsedPercent >= 100 }
+    var secondaryExhausted: Bool { effectiveWeeklyExhausted }
     var quotaExhausted: Bool { primaryExhausted || secondaryExhausted }
-    var primaryRemainingPercent: Double { max(0, 100 - primaryUsedPercent) }
-    var secondaryRemainingPercent: Double { max(0, 100 - secondaryUsedPercent) }
+    var primaryRemainingPercent: Double { showsPrimaryQuota ? max(0, 100 - primaryUsedPercent) : 100 }
+    var secondaryRemainingPercent: Double { effectiveWeeklyRemainingPercent }
+    var effectiveWeeklyRemainingPercent: Double { max(0, 100 - effectiveWeeklyUsedPercent) }
+    var isFreePlan: Bool { planType.lowercased().contains("free") }
+    var hasUsageWarning: Bool {
+        (showsPrimaryQuota && primaryUsedPercent >= 80) || effectiveWeeklyUsedPercent >= 80
+    }
+    var summaryQuotaText: String {
+        if showsPrimaryQuota {
+            return "\(Int(primaryRemainingPercent))% · \(Int(effectiveWeeklyRemainingPercent))%"
+        }
+        return "\(Int(effectiveWeeklyRemainingPercent))%"
+    }
+    var bestAvailableQuotaPercent: Double {
+        showsPrimaryQuota ? min(primaryRemainingPercent, effectiveWeeklyRemainingPercent) : effectiveWeeklyRemainingPercent
+    }
     var displaySortRank: Int {
         if isActive { return 0 }
         if isBanned { return 2 }
         if quotaExhausted { return 3 }
-        if primaryUsedPercent >= 80 || secondaryUsedPercent >= 80 { return 1 }
+        if hasUsageWarning { return 1 }
         return 1
     }
 
     var usageStatus: UsageStatus {
         if isBanned { return .banned }
         if quotaExhausted { return .exceeded }
-        if primaryUsedPercent >= 80 || secondaryUsedPercent >= 80 { return .warning }
+        if hasUsageWarning { return .warning }
         return .ok
     }
 
     var subscriptionExpiryText: String? {
-        guard let expiresAt else { return nil }
+        guard !isFreePlan, let expiresAt else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: L.zh ? "zh_CN" : "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
@@ -124,7 +145,7 @@ struct TokenAccount: Codable, Identifiable {
     }
 
     var subscriptionExpiryDaysRemaining: Int? {
-        guard let expiresAt else { return nil }
+        guard !isFreePlan, let expiresAt else { return nil }
         return Calendar.current.dateComponents([.day], from: Date(), to: expiresAt).day
     }
 
@@ -140,26 +161,37 @@ struct TokenAccount: Codable, Identifiable {
 
     /// 周窗口重置倒计时文字
     var secondaryResetDescription: String {
-        guard !secondaryResetLikelyInactive else { return "" }
-        return resetLabel(from: secondaryResetAt)
+        effectiveWeeklyResetDescription
     }
 
     var secondaryResetStatusText: String {
-        secondaryResetDescription.isEmpty ? L.resetNotActivated : secondaryResetDescription
+        effectiveWeeklyResetStatusText
+    }
+
+    var effectiveWeeklyResetDescription: String {
+        guard !effectiveWeeklyResetLikelyInactive else { return "" }
+        return resetLabel(from: effectiveWeeklyResetAt)
+    }
+
+    var effectiveWeeklyResetStatusText: String {
+        effectiveWeeklyResetDescription.isEmpty ? L.resetNotActivated : effectiveWeeklyResetDescription
     }
 
     var primaryResetLikelyInactive: Bool {
-        primaryUsedPercent <= 0 &&
+        guard showsPrimaryQuota else { return true }
+        return primaryUsedPercent <= 0 &&
         primaryResetAt != nil &&
         primaryResetStagnantRefreshCount >= Self.stagnantResetThreshold
     }
 
-    var secondaryResetLikelyInactive: Bool {
-        primaryUsedPercent <= 0 &&
-        secondaryUsedPercent <= 0 &&
-        secondaryResetAt != nil &&
-        secondaryResetStagnantRefreshCount >= Self.stagnantResetThreshold
+    var effectiveWeeklyResetLikelyInactive: Bool {
+        if effectiveWeeklyUsedPercent > 0 { return false }
+        if showsPrimaryQuota && primaryUsedPercent > 0 { return false }
+        guard effectiveWeeklyResetAt != nil else { return true }
+        return effectiveWeeklyResetStagnantRefreshCount >= Self.stagnantResetThreshold
     }
+
+    var secondaryResetLikelyInactive: Bool { effectiveWeeklyResetLikelyInactive }
 
     mutating func applyUsage(result: WhamUsageResult, checkedAt: Date = Date()) {
         let previousChecked = lastChecked
@@ -195,9 +227,26 @@ struct TokenAccount: Codable, Identifiable {
         if details.subscriptionExpiryResolved {
             expiresAt = details.subscriptionExpiresAt
         }
+        if isFreePlan {
+            // free 套餐不展示订阅截止时间，避免继承历史到期时间。
+            expiresAt = nil
+        }
         if let organizationName = details.organizationName {
             self.organizationName = organizationName
         }
+        normalizeQuotaForFreeAccountWithoutEntitlement(details)
+    }
+
+    private mutating func normalizeQuotaForFreeAccountWithoutEntitlement(_ details: AccountDetails) {
+        guard details.entitlementResolved, !details.hasEntitlement else { return }
+        guard isFreePlan else { return }
+    }
+
+    mutating func sanitizePersistedState() {
+        guard isFreePlan else { return }
+
+        // free 套餐不应显示历史订阅截止时间。
+        expiresAt = nil
     }
 
     private func resetLabel(from date: Date?) -> String {
