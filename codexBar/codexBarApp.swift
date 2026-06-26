@@ -3,6 +3,7 @@ import SwiftUI
 final class CodexBarAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.main.async {
+            TokenStore.shared.reconcileWithCurrentAuth()
             MenuBarStatusController.shared.install()
             MenuBarStatusController.shared.scheduleRecoveryChecks()
             if !TokenStore.shared.accounts.isEmpty {

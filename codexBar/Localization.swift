@@ -122,6 +122,19 @@ enum L {
     static var weeklyExhausted: String  { zh ? "周额度耗尽" : "Weekly quota exhausted" }
     static var primaryExhausted: String { zh ? "5h 额度耗尽" : "5h quota exhausted" }
     static var subscriptionExpiryLabel: String { zh ? "截止" : "Ends" }
+    static var deviceAuthTitle: String { zh ? "使用设备码登录" : "Sign In with Device Code" }
+    static var openChatGPTSettings: String { zh ? "打开 ChatGPT 设置" : "Open ChatGPT Settings" }
+    static var gotIt: String { zh ? "知道了" : "Got It" }
+    static func deviceAuthPrompt(_ code: String) -> String {
+        zh
+            ? "已打开登录页，设备码已复制到剪贴板：\n\n\(code)\n\n如果浏览器提示需要启用设备代码授权，请先前往 ChatGPT -> 设置 -> 安全，为 Codex 开启设备代码授权后再重试。"
+            : "The sign-in page has been opened and the device code has been copied to your clipboard:\n\n\(code)\n\nIf the browser says device code authorization must be enabled, open ChatGPT -> Settings -> Security, allow device code authorization for Codex, then try again."
+    }
+    static var deviceAuthSecurityBlocked: String {
+        zh
+            ? "当前 ChatGPT 账号未给 Codex 开启设备代码授权。请先前往 ChatGPT -> 设置 -> 安全 开启后，再重新授权。"
+            : "This ChatGPT account has not enabled device code authorization for Codex. Open ChatGPT -> Settings -> Security, enable it, then try again."
+    }
 
     // MARK: - TokenAccount status
     static var statusOk: String       { zh ? "正常"     : "OK" }

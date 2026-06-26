@@ -514,6 +514,14 @@ struct MenuBarView: View {
                     updated.isSuspended = false
                 }
                 store.addOrUpdate(updated)
+                if account.isActive {
+                    do {
+                        try store.activate(updated)
+                        store.reconcileWithCurrentAuth()
+                    } catch {
+                        showError = error.localizedDescription
+                    }
+                }
                 Task { await WhamService.shared.refreshOne(account: updated, store: store) }
             case .failure(let error):
                 showError = error.localizedDescription

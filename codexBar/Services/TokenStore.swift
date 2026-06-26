@@ -44,6 +44,7 @@ class TokenStore: ObservableObject {
     func load() {
         guard let data = try? Data(contentsOf: poolURL) else {
             accounts = []
+            reconcileWithCurrentAuth()
             return
         }
         do {
@@ -53,10 +54,10 @@ class TokenStore: ObservableObject {
                 sanitized.sanitizePersistedState()
                 return sanitized
             }
-            markActiveAccount()
-            save()
+            reconcileWithCurrentAuth()
         } catch {
             accounts = []
+            reconcileWithCurrentAuth()
         }
     }
 
@@ -94,8 +95,39 @@ class TokenStore: ObservableObject {
             throw TokenStoreError.encodingFailed
         }
         try data.write(to: authURL, options: .atomic)
-        markActiveAccount()
-        objectWillChange.send()
+        reconcileWithCurrentAuth()
+    }
+
+    func reconcileWithCurrentAuth() {
+        guard let tokens = readCurrentAuthTokens() else { return }
+
+        let activeAccount = sanitizedAccount(from: tokens)
+        let activeAccountId = activeAccount.accountId
+        var nextAccounts = accounts.filter { $0.accountId != activeAccountId }
+        nextAccounts = nextAccounts.map { account in
+            var updated = account
+            updated.isActive = false
+            return updated
+        }
+
+        var merged = activeAccount
+        if let existing = accounts.first(where: { $0.accountId == activeAccountId }) {
+            merged.primaryUsedPercent = existing.primaryUsedPercent
+            merged.secondaryUsedPercent = existing.secondaryUsedPercent
+            merged.primaryResetAt = existing.primaryResetAt
+            merged.secondaryResetAt = existing.secondaryResetAt
+            merged.primaryResetStagnantRefreshCount = existing.primaryResetStagnantRefreshCount
+            merged.secondaryResetStagnantRefreshCount = existing.secondaryResetStagnantRefreshCount
+            merged.lastChecked = existing.lastChecked
+            merged.organizationName = existing.organizationName
+        }
+        merged.isActive = true
+        merged.tokenExpired = false
+        merged.isSuspended = false
+
+        nextAccounts.append(merged)
+        accounts = nextAccounts
+        save()
     }
 
 
@@ -130,6 +162,32 @@ class TokenStore: ObservableObject {
             "last_refresh": ISO8601DateFormatter().string(from: Date()),
             "tokens": tokens
         ]
+    }
+
+    private func readCurrentAuthTokens() -> OAuthTokens? {
+        guard let data = try? Data(contentsOf: authURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tokens = json["tokens"] as? [String: Any],
+              let accessToken = tokens["access_token"] as? String,
+              let refreshToken = tokens["refresh_token"] as? String,
+              let idToken = tokens["id_token"] as? String else {
+            return nil
+        }
+
+        return OAuthTokens(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            idToken: idToken
+        )
+    }
+
+    private func sanitizedAccount(from tokens: OAuthTokens) -> TokenAccount {
+        var account = AccountBuilder.build(from: tokens)
+        account.sanitizePersistedState()
+        account.accessToken = tokens.accessToken
+        account.refreshToken = tokens.refreshToken
+        account.idToken = tokens.idToken
+        return account
     }
 }
 

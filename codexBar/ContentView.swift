@@ -322,6 +322,14 @@ struct ContentView: View {
                     updated.isSuspended = false
                 }
                 store.addOrUpdate(updated)
+                if account.isActive {
+                    do {
+                        try store.activate(updated)
+                        store.reconcileWithCurrentAuth()
+                    } catch {
+                        errorText = error.localizedDescription
+                    }
+                }
                 Task { await refreshAccount(updated) }
             case .failure(let error):
                 errorText = error.localizedDescription
